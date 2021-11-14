@@ -102,6 +102,7 @@ class ManoBranch(nn.Module):
             side="left",
             mano_root=mano_root,
             use_pca=use_pca,
+            return_full_pose=True,
         )
         if self.adapt_skeleton:
             joint_nb = 21
@@ -170,14 +171,14 @@ class ManoBranch(nn.Module):
             verts_right, joints_right = self.mano_layer_right(
                 pose_right,
                 th_betas=shape_right,
-                th_trans=trans_right,
+                th_trans=trans_right.cuda(),
                 root_palm=root_palm,
             )
         if pose_left.shape[0] > 0:
-            verts_left, joints_left = self.mano_layer_left(
+            verts_left, joints_left,fullpose = self.mano_layer_left(
                 pose_left,
                 th_betas=shape_left,
-                th_trans=trans_left,
+                th_trans=trans_left.cuda(),
                 root_palm=root_palm,
             )
         if self.adapt_skeleton:
@@ -212,6 +213,7 @@ class ManoBranch(nn.Module):
             "joints": joints,
             "shape": shape,
             "pose": pose,
+            'fullpose':fullpose,
         }
         if self.use_trans:
             results["trans"] = trans

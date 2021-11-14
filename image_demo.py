@@ -7,7 +7,8 @@ import cv2
 from matplotlib import pyplot as plt
 import numpy as np
 from PIL import Image
-
+from tqdm import tqdm
+from loader.Fhb_Ho3d.hodatasets.hodata import HOdata
 from handobjectdatasets.queries import TransQueries, BaseQueries
 from handobjectdatasets.viz2d import visualize_joints_2d_cv2
 
@@ -70,64 +71,88 @@ if __name__ == "__main__":
         mano_right_data = pickle.load(p_f, encoding="latin1")
         faces = mano_right_data["f"]
 
-    fig = plt.figure(figsize=(4, 4))
-    fig.clf()
-    frame = cv2.imread(args.image_path)
-    frame = preprocess_frame(frame)
-    input_image = prepare_input(frame)
-    img = Image.fromarray(frame.copy())
-    hand_crop = cv2.resize(np.array(img), (256, 256))
-
-    noflip_hand_image = prepare_input(hand_crop, flip_left_right=False)
-    flip_hand_image = prepare_input(hand_crop, flip_left_right=True)
-    noflip_output = forward_pass_3d(model, noflip_hand_image)
-    flip_output = forward_pass_3d(model, flip_hand_image)
-    flip_verts = flip_output["verts"].cpu().detach().numpy()[0]*1000
-    noflip_verts = noflip_output["verts"].cpu().detach().numpy()[0]*1000
-
-    obj_verts = flip_output["objpoints3d"].cpu().detach().numpy()[0]
-    objpointscentered3d = flip_output["objpointscentered3d"].cpu().detach().numpy()[0]
-    obj_faces = flip_output["objfaces"]
-    obj_face_flip = obj_faces.copy()
-    obj_face_flip[:,1] = obj_faces[:,2]
-    obj_face_flip[:,2] = obj_faces[:,1]
-    obj_trans = flip_output["objtrans"].cpu().detach().numpy()
-
-
-    viewJointswObj([{"vertices": obj_verts, "faces":obj_face_flip}, 
-            {"vertices": flip_verts, "faces":faces}])
-    ax = fig.add_subplot(2, 2, 2, projection="3d")
-
-    ax.title.set_text("flipped input")
-    displaymano.add_mesh(ax, flip_verts, faces, flip_x=True)
-    if "objpoints3d" in flip_output:
-        objverts = flip_output["objpoints3d"].cpu().detach().numpy()[0]
-        displaymano.add_mesh(
-            ax, objverts, flip_output["objfaces"], flip_x=True, c="r"
+    # fig = plt.figure(figsize=(4, 4))
+    # fig.clf()
+    example_dataset = HOdata.get_dataset(
+            dataset="fhbhands",
+            data_root="F:\HOinter_data",
+            data_split="train",
+            split_mode="actions",
+            use_cache=True,
+            mini_factor=1.0,
+            center_idx=9,
+            enable_contact=True,
+            filter_no_contact=True,
+            filter_thresh=5.0,
+            synt_factor=1,
+            like_v1=False,
         )
-    flip_inpimage = deepcopy(np.flip(hand_crop, axis=1))
-    if "joints2d" in flip_output:
-        joints2d = flip_output["joints2d"]
-        flip_inpimage = visualize_joints_2d_cv2(
-            flip_inpimage, joints2d.cpu().detach().numpy()[0]
-        )
-    ax = fig.add_subplot(2, 2, 1)
-    ax.imshow(np.flip(flip_inpimage[:, :, ::-1], axis=1))
+    print("length of fhb is:",len(example_dataset))
+    root = R'F:\HOinter_data\fhbhands\procress_dataset'
 
-    ax = fig.add_subplot(2, 2, 4, projection="3d")
-    ax.title.set_text("unflipped input")
-    displaymano.add_mesh(ax, noflip_verts, faces, flip_x=True)
-    if "objpoints3d" in noflip_output:
-        objverts = noflip_output["objpoints3d"].cpu().detach().numpy()[0]
-        displaymano.add_mesh(
-            ax, objverts, noflip_output["objfaces"], flip_x=True, c="r"
-        )
-    noflip_inpimage = deepcopy(hand_crop)
-    if "joints2d" in flip_output:
-        joints2d = noflip_output["joints2d"]
-        noflip_inpimage = visualize_joints_2d_cv2(
-            noflip_inpimage, joints2d.cpu().detach().numpy()[0]
-        )
-    ax = fig.add_subplot(2, 2, 3)
-    ax.imshow(np.flip(noflip_inpimage[:, :, ::-1], axis=1))
-    plt.show()
+    dd = pickle.load(open("misc/mano/MANO_RIGHT.pkl", 'rb'), encoding='latin1')
+    hand_face = np.array(dd['f']) 
+
+    for i in tqdm(range(0,len(example_dataset))):
+
+        image_path = example_dataset.image_names[i]
+        frame = cv2.imread(image_path)
+        frame = preprocess_frame(frame)
+        input_image = prepare_input(frame)
+        img = Image.fromarray(frame.copy())
+        hand_crop = cv2.resize(np.array(img), (256, 256))
+
+        noflip_hand_image = prepare_input(hand_crop, flip_left_right=False)
+        flip_hand_image = prepare_input(hand_crop, flip_left_right=True)
+        noflip_output = forward_pass_3d(model, noflip_hand_image)
+        flip_output = forward_pass_3d(model, flip_hand_image)
+        flip_verts = flip_output["verts"].cpu().detach().numpy()[0]*1000
+        noflip_verts = noflip_output["verts"].cpu().detach().numpy()[0]*1000
+
+        obj_verts = flip_output["objpoints3d"].cpu().detach().numpy()[0]
+        objpointscentered3d = flip_output["objpointscentered3d"].cpu().detach().numpy()[0]
+        obj_faces = flip_output["objfaces"]
+        obj_face_flip = obj_faces.copy()
+        obj_face_flip[:,1] = obj_faces[:,2]
+        obj_face_flip[:,2] = obj_faces[:,1]
+        obj_trans = flip_output["objtrans"].cpu().detach().numpy()
+
+
+        viewJointswObj([{"vertices": obj_verts, "faces":obj_face_flip}, 
+                {"vertices": flip_verts, "faces":faces}])
+        
+    # ax = fig.add_subplot(2, 2, 2, projection="3d")
+
+    # ax.title.set_text("flipped input")
+    # displaymano.add_mesh(ax, flip_verts, faces, flip_x=True)
+    # if "objpoints3d" in flip_output:
+    #     objverts = flip_output["objpoints3d"].cpu().detach().numpy()[0]
+    #     displaymano.add_mesh(
+    #         ax, objverts, flip_output["objfaces"], flip_x=True, c="r"
+    #     )
+    # flip_inpimage = deepcopy(np.flip(hand_crop, axis=1))
+    # if "joints2d" in flip_output:
+    #     joints2d = flip_output["joints2d"]
+    #     flip_inpimage = visualize_joints_2d_cv2(
+    #         flip_inpimage, joints2d.cpu().detach().numpy()[0]
+    #     )
+    # ax = fig.add_subplot(2, 2, 1)
+    # ax.imshow(np.flip(flip_inpimage[:, :, ::-1], axis=1))
+
+    # ax = fig.add_subplot(2, 2, 4, projection="3d")
+    # ax.title.set_text("unflipped input")
+    # displaymano.add_mesh(ax, noflip_verts, faces, flip_x=True)
+    # if "objpoints3d" in noflip_output:
+    #     objverts = noflip_output["objpoints3d"].cpu().detach().numpy()[0]
+    #     displaymano.add_mesh(
+    #         ax, objverts, noflip_output["objfaces"], flip_x=True, c="r"
+    #     )
+    # noflip_inpimage = deepcopy(hand_crop)
+    # if "joints2d" in flip_output:
+    #     joints2d = noflip_output["joints2d"]
+    #     noflip_inpimage = visualize_joints_2d_cv2(
+    #         noflip_inpimage, joints2d.cpu().detach().numpy()[0]
+    #     )
+    # ax = fig.add_subplot(2, 2, 3)
+    # ax.imshow(np.flip(noflip_inpimage[:, :, ::-1], axis=1))
+    # plt.show()

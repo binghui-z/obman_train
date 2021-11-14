@@ -95,6 +95,7 @@ class ManoBranch(nn.Module):
             side="right",
             mano_root=mano_root,
             use_pca=use_pca,
+            return_full_pose=True,
         )
         self.mano_layer_left = ManoLayer(
             ncomps=ncomps,
@@ -168,7 +169,7 @@ class ManoBranch(nn.Module):
 
         # Pass through mano_right and mano_left layers
         if pose_right.shape[0] > 0:
-            verts_right, joints_right = self.mano_layer_right(
+            verts_right, joints_right,fullpose = self.mano_layer_right(
                 pose_right,
                 th_betas=shape_right,
                 th_trans=trans_right.cuda(),

@@ -20,9 +20,9 @@ def preprocess_frame(frame):
 def prepare_input(frame, flip_left_right=False, debug=False):
     # BGR to RGB and flip frame
     input_image = np.flip(frame, axis=2).copy()
-
     if flip_left_right:
         input_image = np.flip(input_image, axis=1).copy()
+
     # Concert to shape batch_size=1, rgb, h, w
     input_image = torch.Tensor(input_image.transpose(2, 0, 1))
 

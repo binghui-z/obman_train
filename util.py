@@ -27,7 +27,7 @@ SAMPLE_VERTS_NUM = 2048
 DEEPCONTACT_BIN_WEIGHTS_FILE = 'data/class_bin_weights.out'
 DEEPCONTACT_NUM_BINS = 10
 
-def viewJointswObj( jointCN_Lst,manoDic_Lst, obj_mesh = None, maker_CN = None, with_axis = True, window_name = None):
+def viewJointswObj( manoDic_Lst, obj_mesh = None, maker_CN = None, with_axis = True, window_name = None):
     COLOR_LST = [[0 ,255 ,255]] +\
                     [[255, 0, 255]]*4 + [[255, 0,   0]] *4 + [[0, 255, 0]]*4 + \
                         [[255, 255, 0]]*4 + [[0, 0, 255]]*4
@@ -39,15 +39,15 @@ def viewJointswObj( jointCN_Lst,manoDic_Lst, obj_mesh = None, maker_CN = None, w
                 [0,17], [17,18], [18,19], [19,20]
             ]
     geo_Lst = []
-    for jointCN in jointCN_Lst:
-        skel_pcd = o3d.geometry.PointCloud()
-        skel_pcd.points = o3d.utility.Vector3dVector(jointCN.T)
-        skel_pcd.colors = o3d.utility.Vector3dVector(np.array(COLOR_LST)[:, [2,1,0]]/255.0) # to rgb, [0,1]
+    # for jointCN in jointCN_Lst:
+    #     skel_pcd = o3d.geometry.PointCloud()
+    #     skel_pcd.points = o3d.utility.Vector3dVector(jointCN.T)
+    #     skel_pcd.colors = o3d.utility.Vector3dVector(np.array(COLOR_LST)[:, [2,1,0]]/255.0) # to rgb, [0,1]
 
-        skel_ls = o3d.geometry.LineSet()
-        skel_ls.points = skel_pcd.points
-        skel_ls.lines = o3d.utility.Vector2iVector(np.array(lines_Lst))
-        geo_Lst += [skel_pcd, skel_ls]
+    #     skel_ls = o3d.geometry.LineSet()
+    #     skel_ls.points = skel_pcd.points
+    #     skel_ls.lines = o3d.utility.Vector2iVector(np.array(lines_Lst))
+    #     geo_Lst += [skel_pcd, skel_ls]
     for manoDic in manoDic_Lst:
         vert = manoDic['vertices']
         face = manoDic['faces'] # 'joints'
@@ -72,6 +72,36 @@ def viewJointswObj( jointCN_Lst,manoDic_Lst, obj_mesh = None, maker_CN = None, w
 
     if with_axis: geo_Lst.append(o3d.geometry.TriangleMesh.create_coordinate_frame(0.05))
     o3d.visualization.draw_geometries(geo_Lst) # width = 640, height = 480, window_name = window_name
+
+def saveJointswObj(savedata_dir, handname_Lst, jointCN_Lst, manoDic_Lst, manoParam_Lst, objectDic_Lst, maker_CN):
+    '''
+    handname_Lst = ['left', 'right']  -> len(jointCN_Lst) == len(manoDic_Lst) == 2
+    '''
+    contact_thresh = 0.4; search_r=15e-3
+    for hand_idx, handname_i in enumerate(handname_Lst):
+        # hand 3d joints
+        joint_filename = os.path.join(savedata_dir, "joint21_" + handname_i + ".mattxt")
+        np.savetxt(joint_filename, jointCN_Lst[hand_idx].T)
+        # hand mono verts
+        manovert_filename = os.path.join(savedata_dir, "hand_" + handname_i + ".ply")
+        # np.savetxt(manovert_filename, manoDic_Lst[hand_idx]['vertices'])
+        mano_mesh = o3d.geometry.TriangleMesh()
+        mano_mesh.vertices = o3d.utility.Vector3dVector(manoDic_Lst[hand_idx]['vertices'])
+        mano_mesh.triangles = o3d.utility.Vector3iVector(manoDic_Lst[hand_idx]['faces'])
+        mano_mesh.compute_vertex_normals()
+        o3d.io.write_triangle_mesh(manovert_filename, mano_mesh)
+
+        # hand mono params
+        manopara_filename = os.path.join(savedata_dir, "paramano_" + handname_i + ".json")
+        with open(manopara_filename, "w", encoding='utf8') as fp:
+            fp.write(json.dumps(manoParam_Lst[hand_idx],indent=4, ensure_ascii=False))
+        # object with contact map
+        object_filename = os.path.join(savedata_dir, "object" + ".ply")
+        object_mesh = o3d.geometry.TriangleMesh()
+        object_mesh.vertices = o3d.utility.Vector3dVector(objectDic_Lst[hand_idx]['vertices'])
+        object_mesh.triangles = o3d.utility.Vector3iVector(objectDic_Lst[hand_idx]['faces'])
+        object_mesh.compute_vertex_normals()
+        o3d.io.write_triangle_mesh(object_filename, object_mesh)
 
 
 def val_to_class(val):
